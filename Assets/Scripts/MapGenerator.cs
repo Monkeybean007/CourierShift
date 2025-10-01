@@ -1,5 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.AI;
+using Unity.AI.Navigation;
 
 public class WarehouseGenerator : MonoBehaviour
 {
@@ -11,6 +13,7 @@ public class WarehouseGenerator : MonoBehaviour
     public GameObject[] packagePrefabs;
     public GameObject deliveryPrefab;
     public GameObject playerPrefab;
+    public GameObject enemyPrefab;
 
     [Header("Map Settings")]
     public int mapWidth = 50;
@@ -27,6 +30,7 @@ public class WarehouseGenerator : MonoBehaviour
     [Header("Objects Settings")]
     public int obstaclesPerRoom = 3;
     public int packagesPerRoom = 3;
+    public int enemiesPerRoom = 1;
 
     private int[,] map;
     private List<RectInt> rooms = new List<RectInt>();
@@ -34,6 +38,10 @@ public class WarehouseGenerator : MonoBehaviour
     private List<Vector3> availableFloorPositions = new List<Vector3>();
     private List<Vector3> obstaclePositions = new List<Vector3>();
     private List<Vector3> packagePositions = new List<Vector3>();
+    private List<Vector3> enemyPositions = new List<Vector3>();
+
+    [Header("NavMesh")]
+    public NavMeshSurface navMeshSurface;
 
     void Start()
     {
@@ -47,6 +55,13 @@ public class WarehouseGenerator : MonoBehaviour
         PlaceDeliveryTile();
         SpawnPlayerNextToDelivery();
         PlaceOuterWalls();
+
+        // Build NavMesh after all objects are in place
+        if (navMeshSurface != null)
+            navMeshSurface.BuildNavMesh();
+
+        // Spawn enemies
+        PlaceEnemies();
     }
 
     void InitializeMap()
@@ -173,12 +188,10 @@ public class WarehouseGenerator : MonoBehaviour
                 Vector3 pos = GetRandomPosInRoom(room);
                 GameObject obs = Instantiate(obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)], pos, Quaternion.identity, transform);
 
-                // Add PushableObstacle component automatically
                 PushableObstacle pushable = obs.GetComponent<PushableObstacle>();
                 if (pushable == null)
                     pushable = obs.AddComponent<PushableObstacle>();
 
-                // Scale mass based on size
                 Vector3 size = obs.transform.localScale;
                 Rigidbody rb = obs.GetComponent<Rigidbody>();
                 if (rb == null)
@@ -191,7 +204,7 @@ public class WarehouseGenerator : MonoBehaviour
                 obstaclePositions.Add(pos);
             }
 
-            // Place packages, avoiding obstacles and delivery tile
+            // Place packages
             int packagesSpawned = 0;
             int attempts = 0;
             while (packagesSpawned < packagesPerRoom && attempts < 50)
@@ -276,5 +289,47 @@ public class WarehouseGenerator : MonoBehaviour
         Vector3 rightPos = new Vector3(mapWidth * tileSize - tileSize / 2f, 1f, mapHeight * tileSize / 2f - tileSize / 2f);
         GameObject right = Instantiate(outerWallPrefab, rightPos, Quaternion.Euler(0, 90f, 0), transform);
         right.transform.localScale = new Vector3(mapHeight * tileSize, 2f, 1f);
+    }
+
+    void PlaceEnemies()
+    {
+        if (enemyPrefab == null) return;
+
+        enemyPositions.Clear();
+
+        foreach (var room in rooms)
+        {
+            int spawned = 0;
+            int attempts = 0;
+
+            while (spawned < enemiesPerRoom && attempts < 20)
+            {
+                Vector3 pos = GetRandomPosInRoom(room);
+
+                bool blocked = false;
+                foreach (var o in obstaclePositions)
+                    if (Vector3.Distance(pos, o) < 1f) blocked = true;
+                foreach (var p in packagePositions)
+                    if (Vector3.Distance(pos, p) < 1f) blocked = true;
+                if (Vector3.Distance(pos, deliveryPos) < 1.5f) blocked = true;
+
+                if (!blocked)
+                {
+                    NavMeshHit hit;
+                    if (NavMesh.SamplePosition(pos, out hit, 2f, NavMesh.AllAreas))
+                    {
+                        GameObject enemy = Instantiate(enemyPrefab, hit.position, Quaternion.identity, transform);
+                        NavMeshAgent agent = enemy.GetComponent<NavMeshAgent>();
+                        if (agent != null)
+                            agent.Warp(hit.position);
+
+                        enemyPositions.Add(hit.position);
+                        spawned++;
+                    }
+                }
+
+                attempts++;
+            }
+        }
     }
 }
