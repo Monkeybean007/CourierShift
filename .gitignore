@@ -1,0 +1,61 @@
+# =============== #
+# Unity Generated #
+# =============== #
+[Ll]ibrary/
+[Tt]emp/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+Obj/
+
+# Avoid committing local cache and auto-generated settings
+UserSettings/
+.vs/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+
+# Rider / JetBrains
+.idea/
+*.DotSettings
+
+# VS Code
+.vscode/
+
+# ============= #
+# Unity Reports #
+# ============= #
+sysinfo.txt
+
+# Crashlytics
+crashlytics-build.properties
+
+# ========== #
+# Build Artifacts #
+# ========== #
+*.apk
+*.aab
+*.unitypackage
+*.app
+*.xcodeproj
+*.xcworkspace
+*.ipa
+*.exe
+*.dll
+
+# ========== #
+# OS Specific #
+# ========== #
+.DS_Store
+Thumbs.db
+desktop.ini
